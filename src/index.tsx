@@ -134,7 +134,10 @@ export default function SearchMoviesAndTVShows() {
                   {result.rating && (
                     <>
                       <List.Item.Detail.Metadata.Separator />
-                      <List.Item.Detail.Metadata.Label title="Rating" text={`${(result.rating * 10).toFixed(0)}%`} />
+                      <List.Item.Detail.Metadata.Label
+                        title="Rating"
+                        text={`${(Number(result.rating) * 10).toFixed(0)}%`}
+                      />
                     </>
                   )}
                 </List.Item.Detail.Metadata>
@@ -212,10 +215,13 @@ const handleMediaRequestError = () => {
 };
 
 // Updated function to request all seasons
-async function requestAllSeasons(tvId) {
+async function requestAllSeasons(tvId: number) {
   try {
     const tvShowDetails = await fetchTvShowDetails(tvId);
     const totalSeasons = tvShowDetails.numberOfSeasons; // Assuming this is the correct property
+
+    // Log the totalSeasons value
+    console.log("Total Seasons:", totalSeasons);
 
     const payload = {
       mediaType: "tv",
@@ -241,25 +247,24 @@ async function requestAllSeasons(tvId) {
 }
 
 // Function to make a request for the selected item
+// Function to make a request for the selected item
 const requestItem = async (mediaType: string, mediaId: number, seasonNumber?: number, title?: string) => {
   try {
-    // Check if the request is for all seasons of a TV show
-    if (mediaType === "tv" && seasonNumber === undefined) {
-      console.log(`Requesting all seasons for TV show with ID ${mediaId}`);
-      await requestAllSeasons(mediaId); // Call the function to request all seasons
-      handleMediaRequestNotification(mediaType, title); // Notify success
-      return; // Exit the function early
-    }
-
-    // Existing logic for individual season or movie requests
-    let payload = {
+    let payload: { mediaType: string; mediaId: number; seasons?: number[] } = {
       mediaType: mediaType,
       mediaId: mediaId,
     };
 
-    if (mediaType === "tv" && typeof seasonNumber === "number") {
+    // Check if the request is for all seasons of a TV show
+    if (mediaType === "tv" && seasonNumber === undefined) {
+      console.log(`Requesting all seasons for TV show with ID ${mediaId}`);
+      const tvShowDetails = await fetchTvShowDetails(mediaId); // Assuming fetchTvShowDetails is a function that fetches TV show details including the number of seasons
+      const totalSeasons = tvShowDetails.numberOfSeasons;
+      payload.seasons = Array.from({ length: totalSeasons }, (_, i) => i + 1);
+    } else if (mediaType === "tv" && typeof seasonNumber === "number") {
+      // If requesting a specific season of a TV show
       console.log(`Requesting TV show with ID ${mediaId}, season ${seasonNumber}`);
-      payload = { ...payload, seasons: [seasonNumber] };
+      payload.seasons = [seasonNumber];
     }
 
     console.log("Payload for request:", payload);
@@ -275,9 +280,11 @@ const requestItem = async (mediaType: string, mediaId: number, seasonNumber?: nu
       console.log(
         `Request successful for ${title || "the item"} with ID: ${mediaId}${seasonNumber ? `, season: ${seasonNumber}` : ""}`,
       );
-      handleMediaRequestNotification(mediaType, title, seasonNumber);
+      // Assuming handleMediaRequestNotification is a function to show success notification
+      handleMediaRequestNotification(mediaType, title || "", seasonNumber);
     } else {
       console.error("Request failed with status:", response.status);
+      // Assuming handleMediaRequestError is a function to show error notification
       handleMediaRequestError();
     }
   } catch (error) {
